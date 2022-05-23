@@ -1,7 +1,7 @@
 /*
    Exemplo de servidor multi-thread - Servidor
-   Laboratorio de Sistemas Operacionais
-   Compilar com: clang -Wall servidor_concorrente.c -o srv -pthread
+   Laboratório de Sistemas Operacionais
+   Compilar com: gcc -Wall servidor_concorrente.c -o srv -pthread
 */
 #include <stdio.h>
 #include <stdlib.h>
@@ -16,11 +16,12 @@
 #include <time.h>
 
 #define MAXBUFF		1024
-#define SRV_PORT	1443
+#define MAXLENGTH    2
+#define SRV_PORT	   1443
 #define CTRL_BACKLOG	5
-#define FIM		"fim da transmissao"
-#define TRUE		1
-#define FALSE		0
+#define FIM		      "fim da transmissão"
+#define TRUE		   1
+#define FALSE	   	0
 
 void * NewSocketThread(void *);
 int server(int);
@@ -31,9 +32,9 @@ int main(void) {
    char buff[MAXBUFF] = {};
    int socketfd2 = 0;
    FILE *arq;
-   // Cria um socket TCP (SOCK_STREAM) para comunicacao na Internet (AF_INET)
+   // Cria um socket TCP (SOCK_STREAM) para comunicação na Internet (AF_INET)
    if ((socketfd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0) {
-        printf("\nservidor: erro na criacao do socket!\n");
+        printf("\nservidor: erro na criação do socket!\n");
         exit(0);
    }
    
@@ -56,12 +57,13 @@ int main(void) {
 	{
 		   printf("Error on listen call \n");
 	}
-   socketfd2 = accept(socketfd, (struct sockaddr*)&serv_addr, &serv_len);
+   socketfd2 = accept(socketfd, (struct sockaddr*)&serv_addr, (socklen_t *)&serv_len);
 
    recv(socketfd2, buff, MAXBUFF, 0);
    printf(">Recebi %s\n", buff);
    arq = fopen(buff, "r");
-   char c[2] = {""};
+   char c[MAXLENGTH] = {""};
+
 	do
 	{
 		c[0] = fgetc(arq);
@@ -70,20 +72,17 @@ int main(void) {
 		}else{
 			c[1] = 1;
 		}
-      // printf("c[0]: %c\n",c[0]);
-      // printf("c[1]: %d\n",c[1]);
-		send(socketfd2, c, strlen(c)*sizeof(char), 0);
+		send(socketfd2, c, MAXLENGTH, 0);
 	}while (c[0] != EOF);
-   // printf(">%d\n", socketfd2);
+
    // server(socketfd2);
 
-   // Fecha o socket apos uso
    close(socketfd);
    return(0);
 }
 
 /*--------------------------------------------------------------------
- Funcao server: - Conexoes para varios clientes - servidor multithread
+ Função server: - Conexões para vários clientes - servidor multithread
  /////////////
 ---------------------------------------------------------------------*/
 int server(int socketfd) {
@@ -91,48 +90,48 @@ int server(int socketfd) {
    struct sockaddr_in cli_addr;
    pthread_t *sockthread;
 
-   // Prepara para receber conexoes dos clientes
+   // Prepara para receber conexões dos clientes
    listen(socketfd, CTRL_BACKLOG);
 
-   // Estrutura de repeticao para continuar recebendo conexoes de clientes
+   // Estrutura de repetição para continuar recebendo conexões de clientes
    for ( ; ; ) {
-       // Aloca espaco na memoria para o novo descritor - newsocketfd
+       // Aloca espaço na memoria para o novo descritor - newsocketfd
        newsocketfd = (int *)malloc(sizeof(newsocketfd));
 
-       // Aguarda a conexao de algum cliente e quando o cliente conecta, o valor de accept
-       // eh recebido como conteudo do endereco newsocketfd (que esta alocado na memoria)
+       // Aguarda a conexão de algum cliente e quando o cliente conecta, o valor de accept
+       // eh recebido como conteúdo do endereço newsocketfd (que esta alocado na memoria)
        cli_len = sizeof(newsocketfd);
-       if ((*newsocketfd = accept(socketfd, (struct sockaddr *)&cli_addr, &cli_len)) < 0) {
-           printf("\nFuncao server: erro no accept!\n");
+       if ((*newsocketfd = accept(socketfd, (struct sockaddr *)&cli_addr, (socklen_t *)&cli_len)) < 0) {
+           printf("\nFunção server: erro no accept!\n");
        	   close(socketfd); // Fecha o socket do servidor
            exit(0);
        }
 
-       // Aloca espa�o na memoria para uma nova thread - sockthread
+       // Aloca espaço na memoria para uma nova thread - sockthread
        sockthread = (pthread_t *)malloc(sizeof(pthread_t));
 
-       // Cria e chama a nova thread(NewSocketThread) para tratar da comunicacao do novo
+       // Cria e chama a nova thread(NewSocketThread) para tratar da comunicação do novo
        // cliente, passando como argumento o descritor(newsocketfd) do novo cliente
        pthread_create(sockthread, NULL, NewSocketThread, newsocketfd);
    }
    return(0);
-} // Fim funcao server
+} // Fim função server
 
 /*--------------------------------------------------------------------------------
- Funcao NewSocketThread: - Recebe o descritor do novo cliente.
- //////////////////////  - Le a mensagem enviada pelo cliente e escreve a mesma mensagem
-                           para este cliente. Assim, cada thread trata da comunicacao
-                           de leitura e escrita para cada cliente, individualmente
-                           (1 thread para 1 cliente).
-                         - Enquanto o cliente estiver conectado, a thread correspondente
-                           ao descritor deste cliente estarz efetuando a comunicacao.
-----------------------------------------------------------------------------------*/
+ Função NewSocketThread: 
+ - Recebe o descritor do novo cliente.
+ - Le a mensagem enviada pelo cliente e escreve a mesma mensagem
+  para este cliente. Assim, cada thread trata da comunicação                        
+  de leitura e escrita para cada cliente, individualmente                        
+  (1 thread para 1 cliente).                        
+- Enquanto o cliente estiver conectado, a thread correspondente                        
+  ao descritor deste cliente estará efetuando a comunicação.----------------------------------------------------------------------------------*/
 void * NewSocketThread(void *fdnewsock) {
    char buff[MAXBUFF] = {};
    int *newsockfd = (int *)fdnewsock;	// Cast do tipo void para tipo int *
    int n;
 
-   // Estrutura de repeticao para continuar efetuando leitura e escrita na comunicacao
+   // Estrutura de repetição para continuar efetuando leitura e escrita na comunicação
    for ( ; ; ) {
       // O servidor le mensagem do cliente "dono" deste descritor
       n = read(*newsockfd, buff, MAXBUFF);
